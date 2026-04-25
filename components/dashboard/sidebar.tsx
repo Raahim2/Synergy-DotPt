@@ -12,10 +12,7 @@ import {
   History, 
   Star, 
   Settings, 
-  HelpCircle, 
-  Plus,
   ChevronDown,
-  Globe,
   LogOut // Added Logout Icon
 } from 'lucide-react';
 import { createClient } from "@/lib/supabase/client"; // Ensure this path matches your setup

@@ -2,18 +2,30 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ModelCard } from "@/components/dashboard/model-card";
-import { Plus, Box, Search, Filter, ArrowRight } from "lucide-react";
+import { Plus, Box, Search, Filter } from "lucide-react";
+import { Suspense } from "react";
 
-export default async function ModelsPage() {
+// 1. Force dynamic rendering. This tells Vercel "Don't try to make this a static HTML file at build time"
+export const dynamic = "force-dynamic";
+
+export default function ModelsPage() {
+  return (
+    // 2. Wrap the data-fetching component in Suspense
+    <Suspense fallback={<div className="mx-auto max-w-6xl py-8 px-4 text-gray-400 font-mono text-xs uppercase tracking-widest">Loading Registry...</div>}>
+      <ModelsList />
+    </Suspense>
+  );
+}
+
+// 3. Move your existing logic into this internal async component
+async function ModelsList() {
   const supabase = await createClient();
   
-  // 1. Get the authenticated user
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     redirect("/auth/login");
   }
 
-  // 2. Fetch the user's profile to get the username
   const { data: profile } = await supabase
     .from('profiles')
     .select('username')
@@ -22,10 +34,6 @@ export default async function ModelsPage() {
 
   const username = profile?.username;
 
-  console.log("--- DEBUG: Fetching models for user:", username);
-
-  // 3. Fetch models where info->author matches our username
-  // Using the ->> operator is the most compatible way to query Supabase JSON
   const { data: models, error: modelsError } = await supabase
     .from('models')
     .select('*')
@@ -35,8 +43,6 @@ export default async function ModelsPage() {
   if (modelsError) {
     console.error("--- DEBUG: Supabase Error:", modelsError.message);
   }
-
-  console.log("--- DEBUG: Models found:", models?.length || 0);
 
   const hasModels = models && models.length > 0;
 
@@ -61,7 +67,6 @@ export default async function ModelsPage() {
 
       {hasModels ? (
         <>
-          {/* Search/Filter Bar */}
           <div className="flex flex-col sm:flex-row gap-3 mb-8">
             <div className="relative flex-1 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors" size={16} />
@@ -77,12 +82,9 @@ export default async function ModelsPage() {
             </button>
           </div>
 
-          {/* Model Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {models.map((model) => {
-              // Safely extract from JSON
               const info = model.info || {};
-              
               return (
                 <ModelCard 
                   key={model.id}
@@ -104,7 +106,6 @@ export default async function ModelsPage() {
           </div>
         </>
       ) : (
-        /* Empty State UI */
         <div className="mt-12 flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-zinc-200 py-32 text-center bg-zinc-50/30">
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-sm border border-zinc-100 mb-6">
             <Box size={36} className="text-zinc-300" />

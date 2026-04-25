@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, use } from 'react'; // 1. Added 'use'
-import { useRouter } from 'next/navigation'; // 2. Removed useParams
+import React, { useState, useEffect, use, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -9,7 +9,7 @@ import remarkFrontmatter from 'remark-frontmatter';
 import { 
   Play, Zap, Loader2, Settings, 
   Search, BookOpen, 
-  Image as ImageIcon, UserPlus, Trash2, Check, Percent, ArrowRightLeft
+  UserPlus, Trash2, Percent, ArrowRightLeft
 } from 'lucide-react';
 import { createClient } from "@/lib/supabase/client";
 
@@ -23,13 +23,22 @@ interface Owner {
   share: number;
 }
 
-// 3. Define the type for the props
 type PageProps = {
   params: Promise<{ username: string; slug: string }>;
 };
 
+// --- 1. THE MAIN PAGE COMPONENT (The Wrapper) ---
+// This handles the Suspense boundary required by Next.js 15+
 export default function ModelDetailPage({ params }: PageProps) {
-  // 4. Unwrap params using the 'use' hook
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center font-mono text-[10px] uppercase tracking-widest text-gray-400">Loading Environment...</div>}>
+      <ModelDetailContent params={params} />
+    </Suspense>
+  );
+}
+
+// --- 2. THE CONTENT COMPONENT (Your actual logic) ---
+function ModelDetailContent({ params }: PageProps) {
   const resolvedParams = use(params);
   const username = resolvedParams.username;
   const slug = resolvedParams.slug;
@@ -40,26 +49,16 @@ export default function ModelDetailPage({ params }: PageProps) {
   const [model, setModel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('playground');
-  
-  // Auth & Permissions
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
-
-  // Playground States
   const [inputText, setInputText] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [prediction, setPrediction] = useState<any>(null);
-
-  // Settings: General
   const [editData, setEditData] = useState({ name: "", description: "", task: "" });
   const [isUpdating, setIsUpdating] = useState(false);
-
-  // Settings: Collaborators
   const [collaborators, setCollaborators] = useState<Owner[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
-
-  // Settings: Transfer & Delete
   const [transferTarget, setTransferTarget] = useState("");
   const [confirmName, setConfirmName] = useState("");
 
@@ -75,7 +74,6 @@ export default function ModelDetailPage({ params }: PageProps) {
         }
       }
 
-      // Fetch model across namespaces
       const { data: allModels } = await supabase.from('models').select('*');
       const targetModel = allModels?.find((m: any) => {
         const matchesAuthor = m.info.author.toLowerCase() === username.toLowerCase();
@@ -90,26 +88,21 @@ export default function ModelDetailPage({ params }: PageProps) {
           description: targetModel.info.description, 
           task: targetModel.info.task 
         });
-        
         const ownersList = targetModel.info.owners || [{ username: targetModel.info.author, share: 100 }];
         setCollaborators(ownersList);
-        
         if (ownersList.some((o: Owner) => o.username === currentHandle)) setIsOwner(true);
       }
       setLoading(false);
     }
     init();
-  }, [username, slug, supabase]); // Removed currentUser from deps to avoid unnecessary re-runs
+  }, [username, slug, supabase]);
 
-  // ... (Keep all your existing handler functions: handleUpdateGeneral, syncCollaborators, etc.)
-  
   const handleUpdateGeneral = async () => {
     setIsUpdating(true);
     try {
       const updatedInfo = { ...model.info, ...editData };
       const { error } = await supabase.from('models').update({ info: updatedInfo }).eq('id', model.id);
       if (error) throw error;
-
       const newSlug = editData.name.toLowerCase().replace(/\s+/g, '-');
       router.push(`/dashboard/models/${username}/${newSlug}`);
       router.refresh();
@@ -143,14 +136,9 @@ export default function ModelDetailPage({ params }: PageProps) {
     if (confirmName !== model.info.name) return alert("Confirmation name mismatch.");
     setIsUpdating(true);
     try {
-      const newInfo = { 
-        ...model.info, 
-        author: transferTarget, 
-        owners: [{ username: transferTarget, share: 100 }] 
-      };
+      const newInfo = { ...model.info, author: transferTarget, owners: [{ username: transferTarget, share: 100 }] };
       const { error } = await supabase.from('models').update({ info: newInfo }).eq('id', model.id);
       if (error) throw error;
-
       router.push(`/dashboard/models/${transferTarget.toLowerCase()}/${slug}`);
       router.refresh();
     } catch (e: any) {
@@ -180,7 +168,7 @@ export default function ModelDetailPage({ params }: PageProps) {
     setIsRunning(true);
     setTimeout(() => {
       setPrediction({
-        output: info.task === 'text-to-image' 
+        output: model.info.task === 'text-to-image' 
           ? `https://image.pollinations.ai/prompt/${encodeURIComponent(inputText)}?width=1024&height=1024&nologo=true`
           : inputText,
         latency: "0.92s"
@@ -197,8 +185,7 @@ export default function ModelDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans antialiased">
-        {/* ... (Keep your existing JSX) ... */}
-        <header className="mx-auto max-w-[1200px] px-8 pt-10 pb-2">
+      <header className="mx-auto max-w-[1200px] px-8 pt-10 pb-2">
         <div className="flex items-start justify-between">
           <div className="space-y-3">
             <h1 className="text-2xl font-medium tracking-tight flex items-center gap-2">
@@ -223,8 +210,6 @@ export default function ModelDetailPage({ params }: PageProps) {
       </header>
 
       <main className="mx-auto max-w-[1200px] px-8 py-10">
-        
-        {/* TABS CONTENT */}
         {activeTab === 'playground' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 animate-in fade-in duration-300">
             <div className="space-y-4">
@@ -253,7 +238,6 @@ export default function ModelDetailPage({ params }: PageProps) {
 
         {activeTab === 'settings' && (
           <div className="max-w-3xl space-y-12 animate-in slide-in-from-bottom-2">
-            {/* General Config */}
             <section className="space-y-6">
                <h3 className="text-lg font-bold tracking-tight border-b border-gray-50 pb-4">General Configuration</h3>
                <div className="grid gap-6 max-w-lg">
@@ -263,7 +247,6 @@ export default function ModelDetailPage({ params }: PageProps) {
                </div>
             </section>
 
-            {/* Access Control (Collaborators with Shares) */}
             <section className="space-y-6">
                <h3 className="text-lg font-bold tracking-tight border-b border-gray-50 pb-4">Revenue & Ownership Splits</h3>
                <div className="max-w-lg space-y-4">
@@ -304,7 +287,6 @@ export default function ModelDetailPage({ params }: PageProps) {
                </div>
             </section>
 
-            {/* Danger Zone (Transfer & Delete) */}
             <section className="pt-4">
                <div className="rounded-xl border border-red-200 overflow-hidden bg-red-50/10">
                   <div className="p-4 border-b border-red-100 text-red-800 font-bold text-xs uppercase tracking-widest">Danger Zone</div>

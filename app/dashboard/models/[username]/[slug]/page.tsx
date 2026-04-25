@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, use } from 'react'; // 1. Added 'use'
+import { useRouter } from 'next/navigation'; // 2. Removed useParams
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import remarkFrontmatter from 'remark-frontmatter';
 import { 
-  Play, FileText, ChevronDown, ShieldCheck, Rocket, 
-  Copy, MoreVertical, Zap, RotateCcw, Loader2, Settings, 
-  AlertTriangle, X, Search, BookOpen, MessageSquare, 
+  Play, Zap, Loader2, Settings, 
+  Search, BookOpen, 
   Image as ImageIcon, UserPlus, Trash2, Check, Percent, ArrowRightLeft
 } from 'lucide-react';
 import { createClient } from "@/lib/supabase/client";
@@ -24,11 +23,18 @@ interface Owner {
   share: number;
 }
 
-export default function ModelDetailPage() {
-  const params = useParams();
+// 3. Define the type for the props
+type PageProps = {
+  params: Promise<{ username: string; slug: string }>;
+};
+
+export default function ModelDetailPage({ params }: PageProps) {
+  // 4. Unwrap params using the 'use' hook
+  const resolvedParams = use(params);
+  const username = resolvedParams.username;
+  const slug = resolvedParams.slug;
+
   const router = useRouter();
-  const username = params?.username as string;
-  const slug = params?.slug as string;
   const supabase = createClient();
   
   const [model, setModel] = useState<any>(null);
@@ -85,7 +91,6 @@ export default function ModelDetailPage() {
           task: targetModel.info.task 
         });
         
-        // Ensure owners have a default share if missing
         const ownersList = targetModel.info.owners || [{ username: targetModel.info.author, share: 100 }];
         setCollaborators(ownersList);
         
@@ -94,9 +99,10 @@ export default function ModelDetailPage() {
       setLoading(false);
     }
     init();
-  }, [username, slug, supabase, currentUser]);
+  }, [username, slug, supabase]); // Removed currentUser from deps to avoid unnecessary re-runs
 
-  // --- PERSISTENT DB UPDATE: GENERAL ---
+  // ... (Keep all your existing handler functions: handleUpdateGeneral, syncCollaborators, etc.)
+  
   const handleUpdateGeneral = async () => {
     setIsUpdating(true);
     try {
@@ -115,7 +121,6 @@ export default function ModelDetailPage() {
     }
   };
 
-  // --- PERSISTENT DB UPDATE: COLLABORATORS & SHARES ---
   const syncCollaborators = async (newList: Owner[]) => {
     try {
       const updatedInfo = { ...model.info, owners: newList };
@@ -134,12 +139,10 @@ export default function ModelDetailPage() {
     setCollaborators(updated);
   };
 
-  // --- PERSISTENT DB UPDATE: TRANSFER OWNERSHIP ---
   const handleTransfer = async () => {
     if (confirmName !== model.info.name) return alert("Confirmation name mismatch.");
     setIsUpdating(true);
     try {
-      // Transfer changes the Author (Namespace) and resets owners to the new author 100%
       const newInfo = { 
         ...model.info, 
         author: transferTarget, 
@@ -157,14 +160,12 @@ export default function ModelDetailPage() {
     }
   };
 
-  // --- PERSISTENT DB UPDATE: DELETE ---
   const handleDelete = async () => {
     if (confirmName !== model.info.name) return;
     const { error } = await supabase.from('models').delete().eq('id', model.id);
     if (!error) router.push('/dashboard/models');
   };
 
-  // Collaborator Search logic
   useEffect(() => {
     if (userSearch.length < 2) return setSearchResults([]);
     const search = async () => {
@@ -196,9 +197,8 @@ export default function ModelDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans antialiased">
-      
-      {/* HEADER */}
-      <header className="mx-auto max-w-[1200px] px-8 pt-10 pb-2">
+        {/* ... (Keep your existing JSX) ... */}
+        <header className="mx-auto max-w-[1200px] px-8 pt-10 pb-2">
         <div className="flex items-start justify-between">
           <div className="space-y-3">
             <h1 className="text-2xl font-medium tracking-tight flex items-center gap-2">

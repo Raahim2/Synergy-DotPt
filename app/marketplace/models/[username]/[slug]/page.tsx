@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, use, Suspense } from 'react'; // Added 'use' and 'Suspense'
+import { useRouter } from 'next/navigation'; // Removed 'useParams'
 import { ethers } from 'ethers';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -17,11 +17,29 @@ declare global {
   interface Window { ethereum?: any; }
 }
 
-export default function MarketplaceModelDetail() {
-  const params = useParams();
+// 1. Define Props type with a Promise for params
+type PageProps = {
+  params: Promise<{ username: string; slug: string }>;
+};
+
+// 2. THE WRAPPER (Default Export)
+// This handles the Suspense boundary required for Vercel builds
+export default function MarketplaceModelDetail({ params }: PageProps) {
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center font-mono text-xs uppercase tracking-widest text-zinc-400 animate-pulse">Establishing Secure Connection...</div>}>
+      <MarketplaceContent params={params} />
+    </Suspense>
+  );
+}
+
+// 3. THE CONTENT COMPONENT (Your actual logic)
+function MarketplaceContent({ params }: PageProps) {
+  // 4. Unwrap the asynchronous params using 'use'
+  const resolvedParams = use(params);
+  const username = resolvedParams.username;
+  const slug = resolvedParams.slug;
+
   const router = useRouter();
-  const username = params?.username as string;
-  const slug = params?.slug as string;
   const supabase = createClient();
 
   const [model, setModel] = useState<any>(null);
@@ -61,10 +79,7 @@ export default function MarketplaceModelDetail() {
   const { info } = model;
   const currentOwners = info.owners || [{ username: info.author, share: 100 }];
   
-  // Check if current user is an owner
   const isOwner = currentOwners.some((o: any) => o.username === currentUser);
-
-  // Financial Calculations
   const valuation = (info.price_eth * 200).toFixed(2);
   const shareCost = ((parseFloat(valuation) / 100) * shareAmount).toFixed(4);
   const buyoutPrice = info.acquisition_price_eth || 5.0;
@@ -84,10 +99,8 @@ export default function MarketplaceModelDetail() {
       
       setStatusMsg(`Waiting for ${buyoutPrice} ETH transaction...`);
 
-      // 1. Send Transaction (Assuming direct payment to first owner for simplicity)
-      // In a production app, this would call your Smart Contract
       const tx = await signer.sendTransaction({
-        to: "0xd8dF6A5913DFFbDc5FB06A3E5C6b0C094266EC4C", // Contract Address
+        to: "0xd8dF6A5913DFFbDc5FB06A3E5C6b0C094266EC4C", 
         value: ethers.parseEther(buyoutPrice.toString())
       });
 
@@ -96,7 +109,6 @@ export default function MarketplaceModelDetail() {
 
       setStatusMsg("Transferring ownership in registry...");
 
-      // 2. Update Supabase: 100% transfer to the buyer
       const updatedInfo = {
         ...info,
         author: currentUser,
@@ -125,7 +137,6 @@ export default function MarketplaceModelDetail() {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans antialiased pb-32">
-      
       {/* STATS MARQUEE */}
       <div className="border-b border-zinc-100 bg-zinc-50 py-2">
          <div className="mx-auto max-w-7xl px-8 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-400">
@@ -139,8 +150,6 @@ export default function MarketplaceModelDetail() {
 
       <div className="mx-auto max-w-7xl px-8 pt-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          
-          {/* LEFT: DOCUMENTATION */}
           <div className="lg:col-span-7 space-y-12">
              <header className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -170,10 +179,7 @@ export default function MarketplaceModelDetail() {
              </section>
           </div>
 
-          {/* RIGHT: MARKETPLACE ACTIONS */}
           <div className="lg:col-span-5 space-y-8">
-             
-             {/* 1. FULL BUYOUT CARD (NEW) */}
              <div className="rounded-3xl border-2 border-black p-8 bg-white shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform"><Wallet size={120} /></div>
                 
@@ -200,7 +206,6 @@ export default function MarketplaceModelDetail() {
                 </button>
              </div>
 
-             {/* 2. EQUITY SHARE CARD */}
              <div className="rounded-3xl border border-zinc-200 p-8 bg-zinc-50/50 space-y-6">
                 <div>
                    <h2 className="text-sm font-black uppercase tracking-widest text-zinc-500">Fractional Equity</h2>
@@ -226,7 +231,6 @@ export default function MarketplaceModelDetail() {
                 </div>
              </div>
 
-             {/* 3. CAP TABLE */}
              <div className="space-y-4">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2 px-1">
                    <Users size={12}/> Current Cap Table
@@ -243,7 +247,6 @@ export default function MarketplaceModelDetail() {
                    ))}
                 </div>
              </div>
-
           </div>
         </div>
       </div>

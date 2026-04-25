@@ -5,8 +5,6 @@ import { ModelCard } from "@/components/dashboard/model-card";
 import { Plus, Box, Search, Filter } from "lucide-react";
 import { Suspense } from "react";
 
-// 1. Force dynamic rendering. This tells Vercel "Don't try to make this a static HTML file at build time"
-export const dynamic = "force-dynamic";
 
 export default function ModelsPage() {
   return (

@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-// import { 
-//   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer 
-// } from 'recharts';
+import { 
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer 
+} from 'recharts';
 import { 
   Plus, ChevronRight, BarChart3, Users, 
   Activity, Globe, ArrowUpRight, Loader2, PackageOpen 
@@ -86,7 +86,7 @@ export default function OverviewPage() {
           <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2">Usage trend <span className="font-normal lowercase tracking-normal">(7 days)</span></h3>
           <button className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-colors flex items-center gap-1 underline underline-offset-4">Full Logs <ArrowUpRight size={12} /></button>
         </div>
-        {/* <div className="h-[200px] w-full">
+        <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={usageData}>
               <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#999'}} dy={10} />
@@ -95,7 +95,7 @@ export default function OverviewPage() {
               <defs><linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#000" stopOpacity={0.05}/><stop offset="95%" stopColor="#000" stopOpacity={0}/></linearGradient></defs>
             </AreaChart>
           </ResponsiveContainer>
-        </div> */}
+        </div>
       </div>
 
       <div className="space-y-4">
